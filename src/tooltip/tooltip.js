@@ -207,36 +207,37 @@ angular.module('mgcrea.ngStrap.tooltip', ['mgcrea.ngStrap.core', 'mgcrea.ngStrap
           $tooltip.$isShown = scope.$isShown = true;
           safeDigest(scope);
 
-          // Now, apply placement
-          $tooltip.$applyPlacement();
+		  setTimeout(function(){
+			  // Now, apply placement
+			  $tooltip.$applyPlacement();
 
-          // Once placed, animate it.
-          // Support v1.2+ $animate
-          // https://github.com/angular/angular.js/issues/11713
-          if(angular.version.minor <= 2) {
-            $animate.enter(tipElement, parent, after, enterAnimateCallback);
-          } else {
-            $animate.enter(tipElement, parent, after).then(enterAnimateCallback);
-          }
-          safeDigest(scope);
+			  // Once placed, animate it.
+			  // Support v1.2+ $animate
+			  // https://github.com/angular/angular.js/issues/11713
+			  if(angular.version.minor <= 2) {
+				$animate.enter(tipElement, parent, after, enterAnimateCallback);
+			  } else {
+				$animate.enter(tipElement, parent, after).then(enterAnimateCallback);
+			  }
+			  safeDigest(scope);
 
-          $$rAF(function () {
-            // Once the tooltip is placed and the animation starts, make the tooltip visible
-            if(tipElement) tipElement.css({visibility: 'visible'});
-          });
+			  $$rAF(function () {
+				// Once the tooltip is placed and the animation starts, make the tooltip visible
+				if(tipElement) tipElement.css({visibility: 'visible'});
+			  });
 
-          // Bind events
-          if(options.keyboard) {
-            if(options.trigger !== 'focus') {
-              $tooltip.focus();
-            }
-            bindKeyboardEvents();
-          }
+			  // Bind events
+			  if(options.keyboard) {
+				if(options.trigger !== 'focus') {
+				  $tooltip.focus();
+				}
+				bindKeyboardEvents();
+			  }
 
-          if(options.autoClose) {
-            bindAutoCloseEvents();
-          }
-
+			  if(options.autoClose) {
+				bindAutoCloseEvents();
+			  }
+		  });
         };
 
         function enterAnimateCallback() {
