@@ -1,6 +1,6 @@
 /**
  * angular-strap
- * @version v2.3.1 - 2015-07-19
+ * @version v2.3.1 - 2015-09-01
  * @link http://mgcrea.github.io/angular-strap
  * @author Olivier Louvignes <olivier@mg-crea.com> (https://github.com/mgcrea)
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -152,27 +152,29 @@ angular.module('mgcrea.ngStrap.tooltip', [ 'mgcrea.ngStrap.core', 'mgcrea.ngStra
         after ? after.after(tipElement) : parent.prepend(tipElement);
         $tooltip.$isShown = scope.$isShown = true;
         safeDigest(scope);
-        $tooltip.$applyPlacement();
-        if (angular.version.minor <= 2) {
-          $animate.enter(tipElement, parent, after, enterAnimateCallback);
-        } else {
-          $animate.enter(tipElement, parent, after).then(enterAnimateCallback);
-        }
-        safeDigest(scope);
-        $$rAF(function() {
-          if (tipElement) tipElement.css({
-            visibility: 'visible'
-          });
-        });
-        if (options.keyboard) {
-          if (options.trigger !== 'focus') {
-            $tooltip.focus();
+        setTimeout(function() {
+          $tooltip.$applyPlacement();
+          if (angular.version.minor <= 2) {
+            $animate.enter(tipElement, parent, after, enterAnimateCallback);
+          } else {
+            $animate.enter(tipElement, parent, after).then(enterAnimateCallback);
           }
-          bindKeyboardEvents();
-        }
-        if (options.autoClose) {
-          bindAutoCloseEvents();
-        }
+          safeDigest(scope);
+          $$rAF(function() {
+            if (tipElement) tipElement.css({
+              visibility: 'visible'
+            });
+          });
+          if (options.keyboard) {
+            if (options.trigger !== 'focus') {
+              $tooltip.focus();
+            }
+            bindKeyboardEvents();
+          }
+          if (options.autoClose) {
+            bindAutoCloseEvents();
+          }
+        });
       };
       function enterAnimateCallback() {
         scope.$emit(options.prefixEvent + '.show', $tooltip);
