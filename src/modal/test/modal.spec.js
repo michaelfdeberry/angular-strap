@@ -3,7 +3,7 @@
 describe('modal', function() {
 
   var bodyEl = $('body'), sandboxEl;
-  var $rootScope, $compile, $templateCache, $$rAF, $animate, $httpBackend, $modal, scope;
+  var $rootScope, $compile, $templateCache, $$rAF, $animate, $timeout, $httpBackend, $modal, scope;
 
   beforeEach(module('ngSanitize'));
   beforeEach(module('ngAnimate'));
@@ -22,6 +22,11 @@ describe('modal', function() {
     $templateCache = $injector.get('$templateCache');
     $$rAF = $injector.get('$$rAF');
     $animate = $injector.get('$animate');
+    $timeout = $injector.get('$timeout');
+    var flush = $animate.flush || $animate.triggerCallbacks;
+    $animate.flush = function() {
+      flush.call($animate); if(!$animate.triggerCallbacks) $timeout.flush();
+    };
     $httpBackend = $injector.get('$httpBackend');
     $modal = $injector.get('$modal');
 
@@ -89,6 +94,18 @@ describe('modal', function() {
     'options-contentTemplate': {
       scope: {modal: {title: 'Title', content: 'Hello Modal!', counter: 0}, items: ['foo', 'bar', 'baz']},
       element: '<a title="{{modal.title}}" data-content="{{modal.content}}" data-content-template="custom" bs-modal>click me</a>'
+    },
+    'options-modalClass': {
+      element: '<a bs-modal="modal" data-modal-class="my-custom-class">click me</a>'
+    },
+    'options-size-lg': {
+      element: '<a bs-modal="modal" data-size="lg">click me</a>'
+    },
+    'options-size-invalid': {
+      element: '<a bs-modal="modal" data-size="md">click me</a>'
+    },
+    'options-events': {
+      element: '<a bs-on-before-hide="onBeforeHide" bs-on-hide="onHide" bs-on-before-show="onBeforeShow" bs-on-show="onShow" bs-modal="modal">click me</a>'
     }
   };
 
@@ -210,22 +227,22 @@ describe('modal', function() {
       expect(sandboxEl.children('.modal').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
       elmScope.$show();
-      try { $animate.triggerCallbacks(); } catch(err) {}
+      try { $animate.flush(); } catch(err) {}
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(1);
       expect(elmScope.$isShown).toBeTruthy();
       elmScope.$hide();
-      $animate.triggerCallbacks();
+      $animate.flush();
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
       elmScope.$toggle();
-      $animate.triggerCallbacks();
+      $animate.flush();
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(1);
       expect(elmScope.$isShown).toBeTruthy();
       elmScope.$toggle();
-      $animate.triggerCallbacks();
+      $animate.flush();
       scope.$digest();
       expect(sandboxEl.children('.tooltip').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
@@ -235,7 +252,7 @@ describe('modal', function() {
       expect(sandboxEl.children('.modal').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
       elmScope.$hide();
-      try { $animate.triggerCallbacks(); } catch(err) {}
+      try { $animate.flush(); } catch(err) {}
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
@@ -245,12 +262,11 @@ describe('modal', function() {
       expect(sandboxEl.children('.modal').length).toBe(0);
       expect(elmScope.$isShown).toBeFalsy();
       elmScope.$show();
-      try { $animate.triggerCallbacks(); } catch(err) {}
+      try { $animate.flush(); } catch(err) {}
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(1);
       expect(elmScope.$isShown).toBeTruthy();
       elmScope.$show();
-      $animate.triggerCallbacks();
       scope.$digest();
       expect(sandboxEl.children('.modal').length).toBe(1);
       expect(elmScope.$isShown).toBeTruthy();
@@ -268,7 +284,7 @@ describe('modal', function() {
       expect(emit).toHaveBeenCalledWith('modal.show.before', myModal);
       // show only fires AFTER the animation is complete
       expect(emit).not.toHaveBeenCalledWith('modal.show', myModal);
-      $animate.triggerCallbacks();
+      $animate.flush();
       expect(emit).toHaveBeenCalledWith('modal.show', myModal);
     });
 
@@ -281,7 +297,7 @@ describe('modal', function() {
       expect(emit).toHaveBeenCalledWith('modal.hide.before', myModal);
       // hide only fires AFTER the animation is complete
       expect(emit).not.toHaveBeenCalledWith('modal.hide', myModal);
-      $animate.triggerCallbacks();
+      $animate.flush();
       expect(emit).toHaveBeenCalledWith('modal.hide', myModal);
     });
 
@@ -290,7 +306,7 @@ describe('modal', function() {
       var emit = spyOn(myModal.$scope, '$emit').and.callThrough();
       scope.$digest();
       myModal.hide();
-      $animate.triggerCallbacks();
+      $animate.flush();
 
       expect(emit).toHaveBeenCalledWith('alert.show.before', myModal);
       expect(emit).toHaveBeenCalledWith('alert.show', myModal);
@@ -307,7 +323,7 @@ describe('modal', function() {
       });
       var myModal = $modal(templates['default'].scope.modal);
       scope.$digest();
-      try { $animate.triggerCallbacks(); } catch(err) {}
+      try { $animate.flush(); } catch(err) {}
     });
 
     it('should be able to cancel hide on hide.before event', function() {
@@ -320,7 +336,7 @@ describe('modal', function() {
       var myModal = $modal(templates['default'].scope.modal);
       scope.$digest();
       myModal.hide();
-      $animate.triggerCallbacks();
+      $animate.flush();
     });
 
     it('should call show.before event with modal element instance id', function() {
@@ -352,13 +368,13 @@ describe('modal', function() {
       });
 
       angular.element(elm[0]).triggerHandler('click');
-      $animate.triggerCallbacks();
+      $animate.flush();
 
       expect(showBefore).toBe(true);
       expect(show).toBe(true);
 
       angular.element(elm[0]).triggerHandler('click');
-      $animate.triggerCallbacks();
+      $animate.flush();
 
       expect(hideBefore).toBe(true);
       expect(hide).toBe(true);
@@ -667,8 +683,136 @@ describe('modal', function() {
         expect(bodyEl.find('.modal-backdrop').length).toBe(0);
       });
 
+      it('should show backdrop above a previous modal dialog using the z-index value', function() {
+        var elm1 = compileDirective('default');
+        var elm2 = compileDirective('default');
+
+        expect(bodyEl.find('.modal-backdrop').length).toBe(0);
+
+        angular.element(elm1[0]).triggerHandler('click');
+        expect(bodyEl.find('.modal-backdrop').length).toBe(1);
+        var backdrop1 = bodyEl.find('.modal-backdrop')[0];
+        var modal1 = bodyEl.find('.modal')[0];
+
+        angular.element(elm2[0]).triggerHandler('click');
+        expect(bodyEl.find('.modal-backdrop').length).toBe(2);
+        var backdrop2 = bodyEl.find('.modal-backdrop')[angular.version.minor <= 2 ? 1 : 0];
+        var modal2 = bodyEl.find('.modal')[1];
+
+        expect(angular.element(backdrop1).css('z-index')).toBe('1040');
+        expect(angular.element(modal1).css('z-index')).toBe('1050');
+        expect(angular.element(backdrop2).css('z-index')).toBe('1060');
+        expect(angular.element(modal2).css('z-index')).toBe('1070');
+      });
+
     });
 
+    describe('modalClass', function() {
+      it('should add class to the modal element', function() {
+        var elm = compileDirective('options-modalClass');
+        angular.element(elm[0]).triggerHandler('click');
+        expect(sandboxEl.children('.modal')).toHaveClass('my-custom-class');
+      });
+
+      it('should not add class to the modal element when modalClass is not present', function() {
+        var elm = compileDirective('default');
+        angular.element(elm[0]).triggerHandler('click');
+        expect(sandboxEl.children('.modal')).not.toHaveClass('my-custom-class');
+      });
+    });
+
+    describe('size', function() {
+      it('sets size class when specified', function() {
+        var elm = compileDirective('options-size-lg');
+        angular.element(elm[0]).triggerHandler('click');
+        expect(sandboxEl.find('.modal-dialog')).toHaveClass('modal-lg');
+      });
+
+      it('does not set size class when not specified', function() {
+        var elm = compileDirective('default');
+        angular.element(elm[0]).triggerHandler('click');
+        expect(sandboxEl.find('.modal-dialog')).not.toHaveClass('modal-lg');
+      });
+
+      it('does not set size class when invalid size is specified', function() {
+        var elm = compileDirective('options-size-invalid');
+        angular.element(elm[0]).triggerHandler('click');
+        expect(sandboxEl.find('.modal-dialog')).not.toHaveClass('modal-lg');
+      });
+
+    });
+
+    describe('onBeforeShow', function() {
+
+      it('should invoke beforeShow event callback', function() {
+        var beforeShow = false;
+
+        function onBeforeShow(select) {
+          beforeShow = true;
+        }
+
+        var elm = compileDirective('options-events', {onBeforeShow: onBeforeShow});
+
+        angular.element(elm[0]).triggerHandler('click');
+
+        expect(beforeShow).toBe(true);
+      });
+    });
+
+    describe('onShow', function() {
+
+      it('should invoke show event callback', function() {
+        var show = false;
+
+        function onShow(select) {
+          show = true;
+        }
+
+        var elm = compileDirective('options-events', {onShow: onShow});
+
+        angular.element(elm[0]).triggerHandler('click');
+        $animate.flush();
+
+        expect(show).toBe(true);
+      });
+    });
+
+    describe('onBeforeHide', function() {
+
+      it('should invoke beforeHide event callback', function() {
+        var beforeHide = false;
+
+        function onBeforeHide(select) {
+          beforeHide = true;
+        }
+
+        var elm = compileDirective('options-events', {onBeforeHide: onBeforeHide});
+
+        angular.element(elm[0]).triggerHandler('click');
+        angular.element(elm[0]).triggerHandler('click');
+
+        expect(beforeHide).toBe(true);
+      });
+    });
+
+    describe('onHide', function() {
+
+      it('should invoke show event callback', function() {
+        var hide = false;
+
+        function onHide(select) {
+          hide = true;
+        }
+
+        var elm = compileDirective('options-events', {onHide: onHide});
+
+        angular.element(elm[0]).triggerHandler('click');
+        angular.element(elm[0]).triggerHandler('click');
+        $animate.flush();
+
+        expect(hide).toBe(true);
+      });
+    });
 
   });
 

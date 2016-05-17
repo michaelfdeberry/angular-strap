@@ -2,18 +2,26 @@
 
 describe('aside', function () {
 
-  var $compile, $templateCache, scope, sandboxEl, $aside;
+  var $compile, $templateCache, scope, sandboxEl, $animate, $timeout, $aside;
   var bodyEl = $('body');
 
   beforeEach(module('ngSanitize'));
+  beforeEach(module('ngAnimate'));
+  beforeEach(module('ngAnimateMock'));
   beforeEach(module('mgcrea.ngStrap.aside'));
 
-  beforeEach(inject(function (_$rootScope_, _$compile_, _$templateCache_, _$aside_) {
+  beforeEach(inject(function (_$rootScope_, _$compile_, _$templateCache_, _$aside_, _$animate_, _$timeout_) {
     scope = _$rootScope_.$new();
     sandboxEl = $('<div>').attr('id', 'sandbox').appendTo($('body'));
     $compile = _$compile_;
     $templateCache = _$templateCache_;
     $aside = _$aside_;
+    $animate = _$animate_;
+    $timeout = _$timeout_;
+    var flush = $animate.flush || $animate.triggerCallbacks;
+    $animate.flush = function() {
+      flush.call($animate); if(!$animate.triggerCallbacks) $timeout.flush();
+    };
   }));
 
   afterEach(function() {
@@ -54,6 +62,9 @@ describe('aside', function () {
     },
     'options-container': {
       element: '<a bs-aside="aside" data-container="{{container}}">click me</a>'
+    },
+    'options-events': {
+      element: '<a bs-on-before-hide="onBeforeHide" bs-on-hide="onHide" bs-on-before-show="onBeforeShow" bs-on-show="onShow" bs-aside="aside">click me</a>'
     }
   };
 
@@ -256,6 +267,28 @@ describe('aside', function () {
         expect(bodyEl.find('.aside-backdrop').length).toBe(0);
       });
 
+      it('should show backdrop above a previous aside dialog using the z-index value', function() {
+        var elm1 = compileDirective('default');
+        var elm2 = compileDirective('default');
+
+        expect(bodyEl.find('.aside-backdrop').length).toBe(0);
+
+        angular.element(elm1[0]).triggerHandler('click');
+        expect(bodyEl.find('.aside-backdrop').length).toBe(1);
+        var backdrop1 = bodyEl.find('.aside-backdrop')[0];
+        var aside1 = bodyEl.find('.aside')[0];
+
+        angular.element(elm2[0]).triggerHandler('click');
+        expect(bodyEl.find('.aside-backdrop').length).toBe(2);
+        var backdrop2 = bodyEl.find('.aside-backdrop')[angular.version.minor <= 2 ? 1 : 0];
+        var aside2 = bodyEl.find('.aside')[1];
+
+        expect(angular.element(backdrop1).css('z-index')).toBe('1040');
+        expect(angular.element(aside1).css('z-index')).toBe('1050');
+        expect(angular.element(backdrop2).css('z-index')).toBe('1060');
+        expect(angular.element(aside2).css('z-index')).toBe('1070');
+      });
+
     });
 
     describe('keyboard', function() {
@@ -308,6 +341,78 @@ describe('aside', function () {
         expect(sandboxEl.find('.aside').length).toBe(1);
       });
 
+    });
+
+    describe('onBeforeShow', function() {
+
+      it('should invoke beforeShow event callback', function() {
+        var beforeShow = false;
+
+        function onBeforeShow(select) {
+          beforeShow = true;
+        }
+
+        var elm = compileDirective('options-events', {onBeforeShow: onBeforeShow});
+
+        angular.element(elm[0]).triggerHandler('click');
+
+        expect(beforeShow).toBe(true);
+      });
+    });
+
+    describe('onShow', function() {
+
+      it('should invoke show event callback', function() {
+        var show = false;
+
+        function onShow(select) {
+          show = true;
+        }
+
+        var elm = compileDirective('options-events', {onShow: onShow});
+
+        angular.element(elm[0]).triggerHandler('click');
+        $animate.flush();
+
+        expect(show).toBe(true);
+      });
+    });
+
+    describe('onBeforeHide', function() {
+
+      it('should invoke beforeHide event callback', function() {
+        var beforeHide = false;
+
+        function onBeforeHide(select) {
+          beforeHide = true;
+        }
+
+        var elm = compileDirective('options-events', {onBeforeHide: onBeforeHide});
+
+        angular.element(elm[0]).triggerHandler('click');
+        angular.element(elm[0]).triggerHandler('click');
+
+        expect(beforeHide).toBe(true);
+      });
+    });
+
+    describe('onHide', function() {
+
+      it('should invoke show event callback', function() {
+        var hide = false;
+
+        function onHide(select) {
+          hide = true;
+        }
+
+        var elm = compileDirective('options-events', {onHide: onHide});
+
+        angular.element(elm[0]).triggerHandler('click');
+        angular.element(elm[0]).triggerHandler('click');
+        $animate.flush();
+
+        expect(hide).toBe(true);
+      });
     });
 
 

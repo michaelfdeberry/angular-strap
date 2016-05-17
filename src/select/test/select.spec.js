@@ -9,14 +9,18 @@ describe('select', function () {
   beforeEach(module('ngAnimate'));
   beforeEach(module('ngAnimateMock'));
 
-  beforeEach(inject(function (_$rootScope_, _$compile_, _$templateCache_, _$select_, _$timeout_, _$animate_) {
+  beforeEach(inject(function ($injector, _$rootScope_, _$compile_, _$templateCache_, _$select_) {
     scope = _$rootScope_.$new();
     sandboxEl = $('<div>').attr('id', 'sandbox').appendTo($('body'));
     $compile = _$compile_;
     $templateCache = _$templateCache_;
     $select = _$select_;
-    $timeout = _$timeout_;
-    $animate = _$animate_;
+    $animate = $injector.get('$animate');
+    $timeout = $injector.get('$timeout');
+    var flush = $animate.flush || $animate.triggerCallbacks;
+    $animate.flush = function() {
+      flush.call($animate); if(!$animate.triggerCallbacks) $timeout.flush();
+    };
   }));
 
   afterEach(function() {
@@ -35,9 +39,17 @@ describe('select', function () {
       scope: {selectedIcon: '', icons: [{value: 'Gear', label: '> Gear'}, {value: 'Globe', label: '> Globe'}, {value: 'Heart', label: '> Heart'}, {value: 'Camera', label: '> Camera'}]},
       element: '<button type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-select data-prefix-event="datepicker"></button>'
     },
+    'default-with-null-option': {
+      scope: {selectedIcon: null, icons: [{value: null, label: 'Null value'}, {value: 'Gear', label: '> Gear'}]},
+      element: '<button type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-select data-prefix-event="datepicker"></button>'
+    },
     'default-with-id': {
       scope: {selectedIcon: '', icons: [{value: 'Gear', label: '> Gear'}, {value: 'Globe', label: '> Globe'}, {value: 'Heart', label: '> Heart'}, {value: 'Camera', label: '> Camera'}]},
       element: '<button id="select1" type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-select></button>'
+    },
+    'default-toggle': {
+      scope: {selectedIcon: '', icons: [{value: 'Gear', label: '> Gear'}, {value: 'Globe', label: '> Globe'}, {value: 'Heart', label: '> Heart'}, {value: 'Camera', label: '> Camera'}]},
+      element: '<button type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" data-toggle="true" bs-select></button>'
     },
     'markup-ngRepeat': {
       element: '<ul><li ng-repeat="i in [1, 2, 3]"><button type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-select></button></li></ul>'
@@ -111,6 +123,10 @@ describe('select', function () {
     'options-container': {
       scope: {selectedIcon: '', icons: [{value: 'Gear', label: '> Gear'}, {value: 'Globe', label: '> Globe'}, {value: 'Heart', label: '> Heart'}, {value: 'Camera', label: '> Camera'}]},
       element: '<button type="button" data-container="{{container}}" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-select></button>'
+    },
+    'options-events': {
+      scope: {selectedIcon: '', icons: [{value: 'Gear', label: '> Gear'}, {value: 'Globe', label: '> Globe'}, {value: 'Heart', label: '> Heart'}, {value: 'Camera', label: '> Camera'}]},
+      element: '<button type="button" class="btn" ng-model="selectedIcon" bs-options="icon.value as icon.label for icon in icons" bs-on-before-hide="onBeforeHide" bs-on-hide="onHide" bs-on-before-show="onBeforeShow" bs-on-show="onShow" bs-on-select="onSelect" bs-select></button>'
     }
   };
 
@@ -185,11 +201,19 @@ describe('select', function () {
       expect(scope.selectedIcon).toBe(scope.icons[1].value);
     });
 
-    it('should support null ng-model initial value', function() {
-      var elm = compileDirective('default', { selectedIcon: null });
+    it('should highlight null value', function() {
+      var elm = compileDirective('default-with-null-option', { selectedIcon: null });
       expect(function() { angular.element(elm[0]).triggerHandler('focus') }).not.toThrow();
-      angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
-      expect(scope.selectedIcon).toBe(scope.icons[1].value);
+      expect(sandboxEl.find('.dropdown-menu li:eq(0)')).toHaveClass('active');
+    });
+
+    it('should not attempt to select an item when there is none highlighted and tab is pressed', function() {
+      var elm = compileDirective('default');
+      angular.element(elm[0]).triggerHandler('focus');
+      expect(sandboxEl.find('.active').length).toBe(0);
+      $timeout.flush();
+      triggerKeyDown( elm, 9 );
+      expect(sandboxEl.find('.active').length).toBe(0);
     });
 
   });
@@ -221,6 +245,15 @@ describe('select', function () {
     it('should correctly watch for changes', function() {
       var elm = compileDirective('default');
       scope.icons.unshift({value: 'Bullhorn', label: '> Bullhorn'});
+      scope.$digest();
+      angular.element(elm[0]).triggerHandler('focus');
+      expect(sandboxEl.find('.dropdown-menu li').length).toBe(scope.icons.length);
+      expect(sandboxEl.find('.dropdown-menu li:eq(0)').text().trim()).toBe(scope.icons[0].label);
+    });
+
+    it('should correctly watch for changes for elements in arrays', function() {
+      var elm = compileDirective('default');
+      scope.icons[0].label = scope.icons[0].label + "s"
       scope.$digest();
       angular.element(elm[0]).triggerHandler('focus');
       expect(sandboxEl.find('.dropdown-menu li').length).toBe(scope.icons.length);
@@ -266,7 +299,7 @@ describe('select', function () {
       angular.element(elm[0]).triggerHandler('focus');
       expect(sandboxEl.find('.dropdown-menu li.active').length).toBe(1);
       expect(sandboxEl.find('.dropdown-menu li.active').index()).toBe(2);
-      
+
       scope.selectedIcon = null;
       scope.$digest();
       angular.element(elm[0]).triggerHandler('focus');
@@ -542,7 +575,7 @@ describe('select', function () {
         var option = {value : 'Canada'};
         mySelect.update([option]);
         mySelect.select(0);
-        $animate.triggerCallbacks();
+        $animate.flush();
 
         expect(emit).toHaveBeenCalledWith('datepicker.show.before', mySelect);
         expect(emit).toHaveBeenCalledWith('datepicker.show', mySelect);
@@ -572,11 +605,11 @@ describe('select', function () {
         });
 
         angular.element(elm[0]).triggerHandler('focus');
-        $animate.triggerCallbacks();
+        $animate.flush();
         angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
 
         angular.element(elm[0]).triggerHandler('blur');
-        $animate.triggerCallbacks();
+        $animate.flush();
 
         expect(select).toBe(true);
         expect(beforeShow).toBe(true);
@@ -587,6 +620,96 @@ describe('select', function () {
 
     });
 
+  });
+
+  describe('onBeforeShow', function() {
+
+    it('should invoke beforeShow event callback', function() {
+      var beforeShow = false;
+
+      function onBeforeShow(select) {
+        beforeShow = true;
+      }
+
+      var elm = compileDirective('options-events', angular.extend({onBeforeShow: onBeforeShow}, templates['options-events'].scope));
+
+      angular.element(elm[0]).triggerHandler('focus');
+
+      expect(beforeShow).toBe(true);
+    });
+  });
+
+  describe('onShow', function() {
+
+    it('should invoke show event callback', function() {
+      var show = false;
+
+      function onShow(select) {
+        show = true;
+      }
+
+      var elm = compileDirective('options-events', angular.extend({onShow: onShow}, templates['options-events'].scope));
+
+      angular.element(elm[0]).triggerHandler('focus');
+      $animate.flush();
+
+      expect(show).toBe(true);
+    });
+  });
+
+  describe('onBeforeHide', function() {
+
+    it('should invoke beforeHide event callback', function() {
+      var beforeHide = false;
+
+      function onBeforeHide(select) {
+        beforeHide = true;
+      }
+
+      var elm = compileDirective('options-events', angular.extend({onBeforeHide: onBeforeHide}, templates['options-events'].scope));
+
+      angular.element(elm[0]).triggerHandler('focus');
+      angular.element(elm[0]).triggerHandler('blur');
+
+      expect(beforeHide).toBe(true);
+    });
+  });
+
+  describe('onHide', function() {
+
+    it('should invoke show event callback', function() {
+      var hide = false;
+
+      function onHide(select) {
+        hide = true;
+      }
+
+      var elm = compileDirective('options-events', angular.extend({onHide: onHide}, templates['options-events'].scope));
+
+      angular.element(elm[0]).triggerHandler('focus');
+      angular.element(elm[0]).triggerHandler('blur');
+      $animate.flush();
+
+      expect(hide).toBe(true);
+    });
+  });
+
+  describe('onSelect', function() {
+
+    it('should invoke the onSelect callback', function () {
+      var selected = null;
+
+      function onSelect(value, index, select) {
+        selected = index;
+      }
+
+      var elm = compileDirective('options-events', angular.extend({onSelect: onSelect}, templates['options-events'].scope));
+
+      angular.element(elm[0]).triggerHandler('focus');
+      angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a').get(0)).triggerHandler('click');
+
+      expect(selected).toBe(1);
+    });
   });
 
   describe('select event', function() {
@@ -637,4 +760,25 @@ describe('select', function () {
     });
   });
 
+  describe('toggle', function () {
+
+    it('should allow user to toggle a selection', function() {
+        var elm = compileDirective('default-toggle');
+        angular.element(elm[0]).triggerHandler('focus');
+        angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
+        expect(scope.selectedIcon).toBe(scope.icons[1].value);
+        angular.element(elm[0]).triggerHandler('focus');
+        angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
+        expect(scope.selectedIcon).toBe(undefined);
+    });
+
+    it('should not allow user to toggle a selection', function() {
+        var elm = compileDirective('default');
+        angular.element(elm[0]).triggerHandler('focus');
+        angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
+        expect(scope.selectedIcon).toBe(scope.icons[1].value);
+        angular.element(sandboxEl.find('.dropdown-menu li:eq(1) a')[0]).triggerHandler('click');
+        expect(scope.selectedIcon).toBe(scope.icons[1].value);
+    });
+  });
 });
