@@ -222,22 +222,22 @@ angular.module('mgcrea.ngStrap.tooltip', ['mgcrea.ngStrap.core', 'mgcrea.ngStrap
           $tooltip.$isShown = scope.$isShown = true;
           safeDigest(scope);
 
-		  setTimeout(function(){
-			  // Now, apply placement
-			  $tooltip.$applyPlacement();
+          $window.setTimeout(function () {
+              // Now, apply placement
+              $tooltip.$applyPlacement();
 
-			  // Once placed, animate it.
-			  // Support v1.2+ $animate
-			  // https://github.com/angular/angular.js/issues/11713
-          if (angular.version.minor <= 2) {
-				$animate.enter(tipElement, parent, after, enterAnimateCallback);
-			  } else {
-				$animate.enter(tipElement, parent, after).then(enterAnimateCallback);
-			  }
-			  safeDigest(scope);
+              // Once placed, animate it.
+              // Support v1.2+ $animate
+              // https://github.com/angular/angular.js/issues/11713
+              if (angular.version.minor <= 2) {
+                $animate.enter(tipElement, parent, after, enterAnimateCallback);
+              } else {
+                $animate.enter(tipElement, parent, after).then(enterAnimateCallback);
+              }
+              safeDigest(scope);
 
-			  $$rAF(function () {
-				// Once the tooltip is placed and the animation starts, make the tooltip visible
+              $$rAF(function () {
+                // Once the tooltip is placed and the animation starts, make the tooltip visible
             if (tipElement) tipElement.css({visibility: 'visible'});
 
             // Bind events
@@ -250,9 +250,9 @@ angular.module('mgcrea.ngStrap.tooltip', ['mgcrea.ngStrap.core', 'mgcrea.ngStrap
           });
 
           if (options.autoClose) {
-				bindAutoCloseEvents();
-			  }
-		  });
+                bindAutoCloseEvents();
+              }
+          });
         };
 
         function enterAnimateCallback () {
